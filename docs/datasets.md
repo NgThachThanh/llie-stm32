@@ -14,7 +14,7 @@ Datasets have been downloaded and arranged into a simple paired format for the t
 
 ### 1. LOL-v1
 Path:
-`/home/stonies/projects/llie-stm32/datasets/lol`
+`datasets/lol`
 
 Structure:
 ```text
@@ -35,7 +35,7 @@ Source mapping:
 
 ### 2. LOL-v2 Real
 Path:
-`/home/stonies/projects/llie-stm32/datasets/lol_v2_real`
+`datasets/lol_v2_real`
 
 Structure:
 ```text
@@ -56,7 +56,7 @@ Source mapping:
 
 ### 3. LOL-v2 Synthetic
 Path:
-`/home/stonies/projects/llie-stm32/datasets/lol_v2_synthetic`
+`datasets/lol_v2_synthetic`
 
 Structure:
 ```text

@@ -7,9 +7,9 @@ data:
   map_size: 8
 
 paths:
-  datasets_root: /home/stonies/projects/llie-stm32/datasets
-  teacher_repo: /home/stonies/projects/llie-stm32/repos/Zero-DCE
-  outputs_root: /home/stonies/projects/llie-stm32/workspace/outputs
+  datasets_root: ../datasets
+  teacher_repo: ../repos/Zero-DCE
+  outputs_root: outputs
 
 model:
   type: student_global_only

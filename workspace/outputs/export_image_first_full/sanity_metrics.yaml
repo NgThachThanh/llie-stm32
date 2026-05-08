@@ -1,4 +1,4 @@
-image: /home/stonies/projects/llie-stm32/datasets/lol/val/low/1.png
+image: datasets/lol/val/low/1.png
 pytorch_global_raw:
   - 6.345405578613281
   - -8.89319133758545

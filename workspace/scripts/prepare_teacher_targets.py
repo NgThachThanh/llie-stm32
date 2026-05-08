@@ -1,5 +1,6 @@
 import argparse
 import subprocess
+import sys
 from pathlib import Path
 
 import cv2
@@ -25,7 +26,7 @@ def main():
     parser.add_argument('--weights', type=str, default='Zero-DCE_code/snapshots/Epoch99.pth')
     parser.add_argument('--input-dir', type=str, required=True)
     parser.add_argument('--output-dir', type=str, required=True)
-    parser.add_argument('--venv-python', type=str, default='/home/stonies/venvs/llie-train/bin/python')
+    parser.add_argument('--venv-python', type=str, default=sys.executable)
     parser.add_argument('--out-h', type=int, default=120)
     parser.add_argument('--out-w', type=int, default=160)
     parser.add_argument('--limit', type=int, default=0)

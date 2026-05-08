@@ -1,12 +1,12 @@
-config: /home/stonies/projects/llie-stm32/workspace/configs/image_first.yaml
-checkpoint: /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first/best.pt
+config: workspace/configs/image_first.yaml
+checkpoint: workspace/outputs/checkpoints_image_first/best.pt
 model_type: student_global_only
 input_shape:
 - 1
 - 1
 - 96
 - 96
-torchscript: /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full/model.ts
-onnx: /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full/model.onnx
-saved_model: /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full/saved_model
-tflite: /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full/model.tflite
+torchscript: workspace/outputs/export_image_first_full/model.ts
+onnx: workspace/outputs/export_image_first_full/model.onnx
+saved_model: workspace/outputs/export_image_first_full/saved_model
+tflite: workspace/outputs/export_image_first_full/model.tflite

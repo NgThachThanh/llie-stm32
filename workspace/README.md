@@ -1,145 +1,111 @@
-# STM32H750 LLIE Training Workspace
+# Training Workspace
 
-Workspace train/deploy cho dự án low-light enhancement trên STM32H750.
+This directory contains the training, preview, and export code for the STM32H750 low-light student model.
 
-## 1. Environment
+Run commands from `workspace/` unless noted otherwise.
+
+## Setup
+
 ```bash
-source /home/stonies/venvs/llie-train/bin/activate
+cd llie-stm32
+python3 -m venv .venv
+source .venv/bin/activate
+pip install torch torchvision numpy scipy pyyaml opencv-python-headless
+cd workspace
 ```
 
-## 2. Current canonical run
-- Config: `configs/image_first.yaml`
-- Winner: `loss.param = 0.02`
-- Canonical checkpoint: `outputs/checkpoints_image_first/best.pt`
-- Canonical previews: `outputs/previews_image_first/`
-- Canonical export dir: `outputs/export_image_first_full/`
-- Sanity checker: `scripts/test_export_sanity.py`
+Optional teacher/reference repos can be cloned under `../repos/`.
 
-Current verified export sanity:
-- TFLite input shape: `[1, 96, 96, 1]`
-- TFLite output shape: `[1, 3]`
-- `max_abs_diff = 1.9073486328125e-06`
-- `mean_abs_diff = 1.112619997911679e-06`
+## Layout
 
-Meaning:
-- current TFLite artifact matches PyTorch at float-rounding level
-- current export is trustworthy for further integration work
-- but this is still a **float export**, not yet an INT8/QAT deploy-ready MCU path
-
-## 3. Cấu trúc chính
-- `configs/` — config yaml
-- `src/data/` — dataloader ảnh và video
-- `src/models/` — Student-G, StudentV1
-- `src/render/` — decode + render luma
-- `src/losses/` — hybrid loss
-- `scripts/` — train, teacher targets, offline fitting, preview/eval, export
-- `outputs/` — checkpoints, previews, comparisons, export artifacts
-
-## 4. Dataset root
 ```text
-/home/stonies/projects/llie-stm32/datasets
+configs/   YAML configs
+src/       data, model, renderer, losses
+scripts/   dataset, train, preview, export helpers
+outputs/   local generated artifacts, mostly ignored by git
 ```
 
-Ví dụ dataset paired:
+## Dataset Layout
+
+Expected paired dataset:
+
 ```text
-datasets/lol/
-├─ train/
-│  ├─ low/
-│  └─ high/
-└─ val/
-   ├─ low/
-   └─ high/
+../datasets/lol/
+  train/low/
+  train/high/
+  val/low/
+  val/high/
 ```
 
-## 5. Teacher repo
+Optional generated folders:
+
 ```text
-/home/stonies/projects/llie-stm32/repos/Zero-DCE
+../datasets/lol/train/teacher_y/
+../datasets/lol/train/pseudo_ctrl_v2/
 ```
 
-## 6. Preflight checklist
-Trước khi chạy thật:
-- activate venv `llie-train`
-- xác nhận CUDA usable nếu định chạy teacher path
-- xác nhận teacher weights tồn tại trong `repos/Zero-DCE/snapshots/Epoch99.pth`
-- xác nhận dataset folder đã có ảnh thật
-- nên chạy thử trên **tiny subset** trước khi chạy full LOL-v1 khi rebuild pipeline từ đầu
+## Canonical Config
 
-## 7. Canonical flow hiện tại
-
-### Bước A — teacher target generation nếu cần rebuild
-```bash
-python scripts/prepare_teacher_targets.py \
-  --teacher-repo /home/stonies/projects/llie-stm32/repos/Zero-DCE \
-  --input-dir /home/stonies/projects/llie-stm32/datasets/lol/train/low \
-  --output-dir /home/stonies/projects/llie-stm32/datasets/lol/train/teacher_y \
-  --limit 10 \
-  --fail-on-missing
+```text
+configs/image_first.yaml
 ```
 
-### Bước B — fit teacher outputs thành pseudo-controls
-```bash
-python scripts/fit_teacher_controls.py \
-  --low-dir /home/stonies/projects/llie-stm32/datasets/lol/train/low \
-  --teacher-dir /home/stonies/projects/llie-stm32/datasets/lol/train/teacher_y \
-  --output-dir /home/stonies/projects/llie-stm32/datasets/lol/train/pseudo_ctrl_v2 \
-  --map-size 8
-# canonical pseudo-control directory currently in use: datasets/lol/train/pseudo_ctrl_v2
+Current baseline model type:
+
+```text
+student_global_only
 ```
 
-### Bước C — train canonical image-first model
+## Train
+
 ```bash
 python scripts/train_float.py \
   --config configs/image_first.yaml \
-  --low-dir /home/stonies/projects/llie-stm32/datasets/lol/train/low \
-  --high-dir /home/stonies/projects/llie-stm32/datasets/lol/train/high \
-  --teacher-dir /home/stonies/projects/llie-stm32/datasets/lol/train/teacher_y \
-  --param-dir /home/stonies/projects/llie-stm32/datasets/lol/train/pseudo_ctrl_v2 \
-  --val-low-dir /home/stonies/projects/llie-stm32/datasets/lol/val/low \
-  --val-high-dir /home/stonies/projects/llie-stm32/datasets/lol/val/high \
-  --val-teacher-dir /home/stonies/projects/llie-stm32/datasets/lol/val/teacher_y \
-  --outdir /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first
+  --low-dir ../datasets/lol/train/low \
+  --high-dir ../datasets/lol/train/high \
+  --teacher-dir ../datasets/lol/train/teacher_y \
+  --param-dir ../datasets/lol/train/pseudo_ctrl_v2 \
+  --val-low-dir ../datasets/lol/val/low \
+  --val-high-dir ../datasets/lol/val/high \
+  --val-teacher-dir ../datasets/lol/val/teacher_y \
+  --outdir outputs/checkpoints_image_first
 ```
 
-### Bước D — preview canonical checkpoint
+If teacher targets are unavailable, omit `--teacher-dir` and `--val-teacher-dir`.
+
+## Preview
+
 ```bash
 python scripts/eval_preview.py \
   --config configs/image_first.yaml \
-  --checkpoint /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first/best.pt \
-  --low-dir /home/stonies/projects/llie-stm32/datasets/lol/val/low \
-  --high-dir /home/stonies/projects/llie-stm32/datasets/lol/val/high \
-  --teacher-dir /home/stonies/projects/llie-stm32/datasets/lol/val/teacher_y \
-  --output-dir /home/stonies/projects/llie-stm32/workspace/outputs/previews_image_first
+  --checkpoint outputs/checkpoints_image_first/best.pt \
+  --low-dir ../datasets/lol/val/low \
+  --high-dir ../datasets/lol/val/high \
+  --teacher-dir ../datasets/lol/val/teacher_y \
+  --output-dir outputs/previews_image_first
 ```
 
-### Bước E — export canonical checkpoint
+## Export
+
 ```bash
 python scripts/export_tflite.py \
   --config configs/image_first.yaml \
-  --checkpoint /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first/best.pt \
-  --output-dir /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full
+  --checkpoint outputs/checkpoints_image_first/best.pt \
+  --output-dir outputs/export_image_first_full
 ```
 
-### Bước F — verify PyTorch vs TFLite
+## Verify Export
+
 ```bash
 python scripts/test_export_sanity.py \
-  --config /home/stonies/projects/llie-stm32/workspace/configs/image_first.yaml \
-  --checkpoint /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first/best.pt \
-  --tflite /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full/model.tflite \
-  --image /home/stonies/projects/llie-stm32/datasets/lol/val/low/1.png
+  --config configs/image_first.yaml \
+  --checkpoint outputs/checkpoints_image_first/best.pt \
+  --tflite outputs/export_image_first_full/model.tflite \
+  --image ../datasets/lol/val/low/1.png
 ```
 
-## 8. Model milestones
-- `student_global_only` = Student-G
-- `student_v1` + `map_size: 8` = Student-MiniMap 8x8
-- `student_v1` + `map_size: 12` = Student-MiniMap 12x12
-- `student_v1` + `map_size: 24` = StudentV1 target architecture
+## Notes
 
-## 9. Lưu ý thực tế
-- GTX 1050 Ti 4GB phù hợp để train batch nhỏ.
-- Nên bắt đầu với LOL-v1 trước để debug pipeline.
-- Teacher targets nên generate trước rồi mới train student.
-- `eval_preview.py` là script bắt buộc nên dùng để nhìn output thật, không chỉ nhìn loss.
-- `export_tflite.py` **đã dùng được** và đã tạo TorchScript/ONNX/TFLite/C-header artifacts cho canonical winner.
-- `train_float.py` hiện đã được bổ sung logging có cấu trúc (`train_log.csv`, `metrics.yaml`) và validation loss optional cho các run sau.
-- Canonical run hiện tại vẫn không có raw per-epoch historical CSV vì nó được tạo trước khi thêm logging.
-- Workspace này hỗ trợ training path; **demo-critical path của project tổng vẫn là firmware baseline + integration trên board**.
+- `eval_preview.py` should be used for visual inspection; loss alone is not enough.
+- The baseline export is a float path, not an INT8/QAT MCU-ready runtime.
+- Firmware integration should start with a bypass hook and non-AI baseline before neural inference.

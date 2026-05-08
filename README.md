@@ -1,60 +1,79 @@
 # llie-stm32
 
-Low-light enhancement project for `STM32H750VBT6`.
+Low-light enhancement research workspace for `STM32H750VBT6`.
 
-Goal:
+Target pipeline:
 
 ```text
 camera -> lightweight enhancement -> LCD
 ```
 
-Main idea: keep MCU work simple and real-time. Use a tiny student model to predict control values, then let firmware apply fast gain/gamma style rendering.
+The project explores a deployable path for microcontrollers: a tiny student model predicts global enhancement controls, while firmware applies fast gain/gamma style rendering.
 
-## Status
+## What Is Included
 
-- Canonical model: `Student-G`
-- Canonical config: `workspace/configs/image_first.yaml`
-- Canonical export metadata/C header: `workspace/outputs/export_image_first_full/`
-- Firmware target to inspect: `repos/hardware/MiniSTM32H7xx/SDK/HAL/STM32H750/08-DCMI2LCD`
+- Training and export code in `workspace/`
+- Technical notes in `docs/`
+- Project reports in `reports/`
+- Dataset folder skeleton in `datasets/`
+- Firmware integration checklist for STM32H750 DCMI/LCD flow
 
-Large local assets are intentionally not tracked:
+Large local assets are not tracked: virtual environments, datasets, cloned reference repos, checkpoints, previews, and model binaries.
 
-- `.venv/`
-- `datasets/`
-- `repos/`
-- checkpoints, previews, model binaries
+## Quick Start
 
-## Layout
+```bash
+git clone git@github.com:NgThachThanh/llie-stm32.git
+cd llie-stm32
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install torch torchvision numpy scipy pyyaml opencv-python-headless
+
+python -m compileall workspace/scripts workspace/src
+```
+
+## Repository Layout
 
 ```text
 docs/        technical notes and firmware plan
 reports/     project reports
 papers/      reference paper
 datasets/    local datasets, ignored except README
-repos/       local reference/vendor repos, ignored
-workspace/   training, evaluation, export code
+repos/       optional local reference/vendor repos, ignored
+workspace/   training, evaluation, and export code
 ```
 
-## Read Next
+## Data Layout
+
+Place paired low-light datasets under:
 
 ```text
-STATUS.md
-TODO.md
-workspace/README.md
-docs/stm32-08-dcmi2lcd-integration-checklist.md
+datasets/lol/
+  train/low/
+  train/high/
+  val/low/
+  val/high/
 ```
 
-## Quick Check
+Teacher targets and pseudo-controls, when generated, live beside the dataset:
 
-```bash
-cd /home/stonies/projects/llie-stm32
-source .venv/bin/activate
-python -m compileall workspace/scripts workspace/src
+```text
+datasets/lol/train/teacher_y/
+datasets/lol/train/pseudo_ctrl_v2/
 ```
 
-## Current Priority
+## Current Baseline
 
-1. Verify raw `camera -> LCD` on board.
-2. Add firmware bypass/process hook.
-3. Build non-AI baseline first.
-4. Integrate Student-G only after board path is stable.
+- Model: `Student-G`
+- Config: `workspace/configs/image_first.yaml`
+- Export metadata and generated C array: `workspace/outputs/export_image_first_full/`
+
+See `workspace/README.md` for train, preview, and export commands.
+
+## Next Engineering Work
+
+1. Verify raw `camera -> LCD` on the target board.
+2. Add a firmware bypass/process hook.
+3. Build and measure a non-AI baseline.
+4. Integrate `Student-G` only after the board path is stable.

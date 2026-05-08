@@ -15,10 +15,10 @@ Mục tiêu cụ thể:
 
 ## 2. Repo và example cần bám
 Repo firmware chính:
-- `/home/stonies/projects/llie-stm32/repos/hardware/MiniSTM32H7xx`
+- `repos/hardware/MiniSTM32H7xx`
 
 Example quan trọng nhất:
-- `/home/stonies/projects/llie-stm32/repos/hardware/MiniSTM32H7xx/SDK/HAL/STM32H750/08-DCMI2LCD`
+- `repos/hardware/MiniSTM32H7xx/SDK/HAL/STM32H750/08-DCMI2LCD`
 
 Các file nên mở đầu tiên:
 - `08-DCMI2LCD/Src/main.c`

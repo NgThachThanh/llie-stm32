@@ -70,7 +70,7 @@ Meaning:
 
 ## STM32 integration status
 Target firmware side:
-- Root project: `/home/stonies/projects/llie-stm32`
+- Root project: `.`
 - Training workspace: `workspace/`
 - Teacher repo: `repos/Zero-DCE`
 - STM32H750 repo: `repos/hardware/MiniSTM32H7xx`

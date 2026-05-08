@@ -13,7 +13,8 @@ This script prepares directories and can download direct URLs when provided.
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root', type=str, default='/home/stonies/projects/llie-stm32/datasets')
+    default_root = Path(__file__).resolve().parents[2] / 'datasets'
+    parser.add_argument('--root', type=str, default=str(default_root))
     parser.add_argument('--name', type=str, required=True, help='lol | lol_v2 | custom')
     parser.add_argument('--url', type=str, default='', help='Direct downloadable URL if available')
     args = parser.parse_args()

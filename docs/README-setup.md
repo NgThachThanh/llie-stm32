@@ -1,41 +1,37 @@
-# LLIE STM32H750 setup notes
+# Setup Notes
 
-## Environment prepared
-- Python venv: `/home/stonies/venvs/llie-train`
-- Activate: `source /home/stonies/venvs/llie-train/bin/activate`
-- Verified packages:
-  - torch 2.5.1+cu121
-  - torchvision 0.20.1+cu121
-  - pillow 12.2.0
-  - opencv-python 4.13.0
-  - numpy, pyyaml, matplotlib, tqdm, scikit-image
-- Verified GPU:
-  - NVIDIA GeForce GTX 1050 Ti
-  - CUDA available in torch: True
+This project is intended to be cloned and run from any local path.
 
-## Working directories
-- Project root: `/home/stonies/projects/llie-stm32`
-- Datasets: `/home/stonies/projects/llie-stm32/datasets`
-- Repos: `/home/stonies/projects/llie-stm32/repos`
-- Training workspace: `/home/stonies/projects/llie-stm32/workspace`
+## Python Environment
 
-## Teacher repo cloned
-- Zero-DCE: `/home/stonies/projects/llie-stm32/repos/Zero-DCE`
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install torch torchvision numpy scipy pyyaml opencv-python-headless
+```
 
-## Recommended starter datasets
-1. LOL-v1
-2. LOL-v2 Real
-3. LOL-v2 Synthetic (optional)
-4. Real low-light images/videos captured locally (optional, but valuable)
+Use CUDA-enabled PyTorch if training on an NVIDIA GPU.
 
-## Practical recommendation
-- Start with LOL-v1 to debug pipeline quickly.
-- Move to LOL-v2 Real for main paired training.
-- Add real low-light clips later for temporal finetuning.
+## Working Directories
 
-## Next build steps
-1. Create dataset download/import scripts.
-2. Build full training workspace under `workspace/`.
-3. Add teacher target generation wrapper using Zero-DCE.
-4. Add offline fitting + student training scripts.
-5. Run a tiny smoke-train on GTX 1050 Ti.
+```text
+datasets/    local datasets, ignored by git
+repos/       optional cloned reference repos, ignored by git
+workspace/   training and export code
+```
+
+## Optional Teacher Repo
+
+Clone Zero-DCE under:
+
+```text
+repos/Zero-DCE
+```
+
+The teacher path is optional. The student can also train directly against paired `low/high` images.
+
+## Recommended Dataset Order
+
+1. LOL-v1 for quick pipeline debugging.
+2. LOL-v2 Real for stronger paired training.
+3. Local captured low-light clips for temporal testing.
