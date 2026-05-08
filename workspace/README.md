@@ -56,6 +56,14 @@ Current baseline model type:
 student_global_only
 ```
 
+Included baseline artifacts:
+
+```text
+outputs/checkpoints_image_first/
+outputs/previews_image_first/
+outputs/export_image_first_full/
+```
+
 ## Train
 
 ```bash

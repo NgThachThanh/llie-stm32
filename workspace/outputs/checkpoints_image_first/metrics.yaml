@@ -1,0 +1,23 @@
+reconstructed_from_surviving_artifacts: true
+note: |
+  This file was created after the original run from surviving checkpoints and docs.
+  It is not a raw historical per-epoch training log. The original run did not persist
+  structured CSV/YAML history automatically.
+config: /home/stonies/projects/llie-stm32/workspace/configs/image_first.yaml
+checkpoint_dir: /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first
+best_checkpoint: /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first/best.pt
+last_checkpoint: /home/stonies/projects/llie-stm32/workspace/outputs/checkpoints_image_first/last.pt
+winner_setting:
+  loss.param: 0.02
+best_checkpoint_stats:
+  epoch: 15
+  loss: 0.1912352213116943
+last_checkpoint_stats:
+  epoch: 20
+  loss: 0.1914016606866336
+canonical_preview_dir: /home/stonies/projects/llie-stm32/workspace/outputs/previews_image_first
+canonical_export_dir: /home/stonies/projects/llie-stm32/workspace/outputs/export_image_first_full
+historical_structured_train_log_available: false
+recommended_future_artifacts:
+  - train_log.csv
+  - metrics.yaml

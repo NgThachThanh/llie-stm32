@@ -18,7 +18,14 @@ The project explores a deployable path for microcontrollers: a tiny student mode
 - Dataset folder skeleton in `datasets/`
 - Firmware integration checklist for STM32H750 DCMI/LCD flow
 
-Large local assets are not tracked: virtual environments, datasets, cloned reference repos, checkpoints, previews, and model binaries.
+Large local assets are not tracked: virtual environments, datasets, and cloned reference repos.
+
+The repo does include the selected baseline outputs needed for review and board bring-up:
+
+- `workspace/outputs/checkpoints_image_first/`
+- `workspace/outputs/previews_image_first/`
+- `workspace/outputs/export_image_first_full/`
+- `firmware/08-DCMI2LCD/`
 
 ## Quick Start
 
@@ -37,6 +44,7 @@ python -m compileall workspace/scripts workspace/src
 
 ```text
 docs/        technical notes and firmware plan
+firmware/    STM32H750 firmware example prepared for board testing
 reports/     project reports
 papers/      reference paper
 datasets/    local datasets, ignored except README
@@ -67,7 +75,8 @@ datasets/lol/train/pseudo_ctrl_v2/
 
 - Model: `Student-G`
 - Config: `workspace/configs/image_first.yaml`
-- Export metadata and generated C array: `workspace/outputs/export_image_first_full/`
+- Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
+- Export artifacts: `workspace/outputs/export_image_first_full/`
 
 See `workspace/README.md` for train, preview, and export commands.
 

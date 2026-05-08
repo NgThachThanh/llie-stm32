@@ -5,14 +5,6 @@ __pycache__/
 datasets/*
 !datasets/README.md
 repos/
-workspace/outputs/*
-!workspace/outputs/RUN_SUMMARY.md
-!workspace/outputs/export_image_first_full/
-workspace/outputs/export_image_first_full/*
-!workspace/outputs/export_image_first_full/export_manifest.yaml
-!workspace/outputs/export_image_first_full/model_tflite.c
-!workspace/outputs/export_image_first_full/model_tflite.h
-!workspace/outputs/export_image_first_full/sanity_metrics.yaml
 
 *.pt
 *.onnx
@@ -20,6 +12,15 @@ workspace/outputs/export_image_first_full/*
 *.ts
 *.zip
 *.tar.gz
+
+workspace/outputs/*
+!workspace/outputs/RUN_SUMMARY.md
+!workspace/outputs/checkpoints_image_first/
+!workspace/outputs/checkpoints_image_first/**
+!workspace/outputs/previews_image_first/
+!workspace/outputs/previews_image_first/**
+!workspace/outputs/export_image_first_full/
+!workspace/outputs/export_image_first_full/**
 
 datasets/**/teacher_y__tmp*/
 datasets/**/teacher_y__tmp_*/
