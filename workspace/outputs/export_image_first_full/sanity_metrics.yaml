@@ -1,0 +1,26 @@
+image: /home/stonies/projects/llie-stm32/datasets/lol/val/low/1.png
+pytorch_global_raw:
+  - 6.345405578613281
+  - -8.89319133758545
+  - -6.197888374328613
+tflite_global_raw:
+  - 6.345407485961914
+  - -8.893192291259766
+  - -6.1978888511657715
+abs_diff:
+  - 1.9073486328125e-06
+  - 9.5367431640625e-07
+  - 4.76837158203125e-07
+max_abs_diff: 1.9073486328125e-06
+mean_abs_diff: 1.112619997911679e-06
+tflite_input_shape:
+  - 1
+  - 96
+  - 96
+  - 1
+tflite_output_shape:
+  - 1
+  - 3
+notes:
+  - sanity rerun on real low-light validation image instead of preview montage
+  - parity remains within expected float-rounding tolerance

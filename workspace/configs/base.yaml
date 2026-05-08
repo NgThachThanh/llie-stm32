@@ -1,0 +1,49 @@
+project_name: stm32_llie
+
+data:
+  input_size: 96
+  out_h: 120
+  out_w: 160
+  map_size: 8
+
+paths:
+  datasets_root: /home/stonies/projects/llie-stm32/datasets
+  teacher_repo: /home/stonies/projects/llie-stm32/repos/Zero-DCE
+  outputs_root: /home/stonies/projects/llie-stm32/workspace/outputs
+
+model:
+  type: student_global_only
+  in_channels: 1
+  base_channels: 8
+  local_hidden_channels: 4
+  map_size: 8
+
+ranges:
+  gain_min: 1.0
+  gain_max: 2.5
+  gamma_min: 0.7
+  gamma_max: 1.6
+  lift_min: 0.0
+  lift_max: 24.0
+  map_residual_scale: 0.5
+
+train:
+  batch_size: 8
+  num_workers: 2
+  epochs: 20
+  lr: 0.001
+  weight_decay: 0.0001
+  seed: 42
+  device: cuda
+
+loss:
+  l1: 1.0
+  ssim: 0.7
+  exposure: 0.3
+  tv: 0.05
+  reg: 0.05
+  param: 0.02
+
+temporal:
+  enabled: false
+  weight: 0.2
