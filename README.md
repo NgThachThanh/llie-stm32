@@ -13,19 +13,21 @@ The project explores a deployable path for microcontrollers: a tiny student mode
 ## What Is Included
 
 - Training and export code in `workspace/`
-- Technical notes in `docs/`
-- Project reports in `reports/`
-- Dataset folder skeleton in `datasets/`
-- Firmware integration checklist for STM32H750 DCMI/LCD flow
+- One technical plan in `docs/PLAN.md`
+- One project report in `reports/REPORT.md`
+- Datasets in `datasets/` through Git LFS
+- STM32H750 firmware base in `firmware/08-DCMI2LCD/`
 
-Large local assets are not tracked: virtual environments, datasets, and cloned reference repos.
-
-The repo does include the selected baseline outputs needed for review and board bring-up:
+The repo includes the selected baseline outputs needed for review and board bring-up:
 
 - `workspace/outputs/checkpoints_image_first/`
 - `workspace/outputs/previews_image_first/`
 - `workspace/outputs/export_image_first_full/`
-- `firmware/08-DCMI2LCD/`
+
+Not tracked:
+
+- `.venv/`
+- optional cloned reference repos under `repos/`
 
 ## Quick Start
 
@@ -40,6 +42,12 @@ pip install torch torchvision numpy scipy pyyaml opencv-python-headless
 python -m compileall workspace/scripts workspace/src
 ```
 
+If dataset files are missing after clone:
+
+```bash
+git lfs pull
+```
+
 ## Repository Layout
 
 ```text
@@ -47,7 +55,7 @@ docs/        technical notes and firmware plan
 firmware/    STM32H750 firmware example prepared for board testing
 reports/     project reports
 papers/      reference paper
-datasets/    local datasets, ignored except README
+datasets/    LOL / LOL-v2 datasets tracked with Git LFS
 repos/       optional local reference/vendor repos, ignored
 workspace/   training, evaluation, and export code
 ```
@@ -71,6 +79,13 @@ datasets/lol/train/teacher_y/
 datasets/lol/train/pseudo_ctrl_v2/
 ```
 
+Other included datasets:
+
+```text
+datasets/lol_v2_real/
+datasets/lol_v2_synthetic/
+```
+
 ## Current Baseline
 
 - Model: `Student-G`
@@ -78,7 +93,45 @@ datasets/lol/train/pseudo_ctrl_v2/
 - Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
 - Export artifacts: `workspace/outputs/export_image_first_full/`
 
-See `workspace/README.md` for train, preview, and export commands.
+## Train / Preview / Export
+
+Run from `workspace/`.
+
+Train:
+
+```bash
+python scripts/train_float.py \
+  --config configs/image_first.yaml \
+  --low-dir ../datasets/lol/train/low \
+  --high-dir ../datasets/lol/train/high \
+  --teacher-dir ../datasets/lol/train/teacher_y \
+  --param-dir ../datasets/lol/train/pseudo_ctrl_v2 \
+  --val-low-dir ../datasets/lol/val/low \
+  --val-high-dir ../datasets/lol/val/high \
+  --val-teacher-dir ../datasets/lol/val/teacher_y \
+  --outdir outputs/checkpoints_image_first
+```
+
+Preview:
+
+```bash
+python scripts/eval_preview.py \
+  --config configs/image_first.yaml \
+  --checkpoint outputs/checkpoints_image_first/best.pt \
+  --low-dir ../datasets/lol/val/low \
+  --high-dir ../datasets/lol/val/high \
+  --teacher-dir ../datasets/lol/val/teacher_y \
+  --output-dir outputs/previews_image_first
+```
+
+Export:
+
+```bash
+python scripts/export_tflite.py \
+  --config configs/image_first.yaml \
+  --checkpoint outputs/checkpoints_image_first/best.pt \
+  --output-dir outputs/export_image_first_full
+```
 
 ## Next Engineering Work
 
