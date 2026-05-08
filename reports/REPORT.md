@@ -1,128 +1,128 @@
-# Project Report
+# Báo Cáo Dự Án
 
-## Title
+## Tên đề tài
 
-Low-light enhancement pipeline for near real-time display on `STM32H750VBT6`.
+Pipeline tăng cường ảnh thiếu sáng near real-time trên `STM32H750VBT6`.
 
-## Motivation
+## Lý do chọn hướng này
 
-Low-light camera feeds are dark, noisy, and hard to inspect directly. Desktop low-light enhancement models are too heavy for a small MCU, so this project focuses on a practical embedded pipeline rather than a large image-to-image network.
+Ảnh camera trong môi trường thiếu sáng thường tối, nhiễu và khó quan sát. Các model low-light enhancement lớn chạy tốt trên PC/GPU nhưng không phù hợp MCU nhỏ. Vì vậy dự án chọn hướng thực dụng: thiết kế pipeline nhúng nhẹ, đo được trên board, có fallback không AI.
 
-## Hardware Target
+## Phần cứng mục tiêu
 
 - Board: WeAct MiniSTM32H7xx / `STM32H750VBT6`
 - Camera path: DCMI
-- Display: ST7735 LCD
-- Firmware base: `firmware/08-DCMI2LCD/`
+- Màn hình: ST7735 LCD
+- Firmware nền: `firmware/08-DCMI2LCD/`
 
-## System Direction
+## Hướng hệ thống
 
-Target path:
+Pipeline mục tiêu:
 
 ```text
-camera -> luma/control estimation -> fast enhancement -> LCD
+camera -> ước lượng luma/control -> render nhanh -> LCD
 ```
 
-The selected direction is system-centric:
+Nguyên tắc:
 
-- keep frame resolution modest
-- avoid full RGB image-to-image CNN on MCU
-- use lightweight luma preprocessing
-- use tiny model output as control values
-- keep a no-AI baseline as fallback
+- không dùng full RGB image-to-image CNN trên MCU
+- ưu tiên luma, độ phân giải nhỏ
+- model nhỏ chỉ xuất control values
+- firmware làm phần render nhanh
+- baseline không AI luôn tồn tại để fallback
 
-## Current AI Baseline
+## Baseline AI hiện tại
 
 - Model family: `Student-G`
-- Current model type: `student_global_only`
-- Input: `96x96` luma
-- Output: 3 global controls
-- Canonical config: `workspace/configs/image_first.yaml`
+- Model type: `student_global_only`
+- Input: luma `96x96`
+- Output: 3 control toàn cục
+- Config: `workspace/configs/image_first.yaml`
 - Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
-- Preview output: `workspace/outputs/previews_image_first/`
-- Export output: `workspace/outputs/export_image_first_full/`
+- Preview: `workspace/outputs/previews_image_first/`
+- Export: `workspace/outputs/export_image_first_full/`
 
-Export sanity:
+Sanity export:
 
 - TFLite input shape: `[1, 96, 96, 1]`
 - TFLite output shape: `[1, 3]`
-- max absolute diff vs PyTorch: `1.9073486328125e-06`
-- mean absolute diff vs PyTorch: `1.112619997911679e-06`
+- max diff so với PyTorch: `1.9073486328125e-06`
+- mean diff so với PyTorch: `1.112619997911679e-06`
 
-## Training Milestones
+## Mốc train
 
-### Smoke Run
+### Smoke run
 
-Goal: prove teacher target generation, pseudo-control fitting, training, and preview all run end-to-end.
+Mục tiêu: xác nhận pipeline teacher target, pseudo-control, training và preview chạy end-to-end.
 
-Result:
+Kết quả:
 
-- teacher generation passed
-- pseudo-control generation passed
-- Student-G trained
-- preview generation passed
-- output improved over low-light input but was still under-enhanced
+- teacher generation chạy được
+- pseudo-control generation chạy được
+- Student-G train được
+- preview tạo được
+- output tốt hơn ảnh low-light gốc nhưng vẫn hơi tối
 
-Conclusion:
+Kết luận:
 
-- smoke milestone passed
-- quality milestone was not final
+- smoke milestone pass
+- chưa phải quality milestone cuối
 
-### Image-First Run
+### Image-first run
 
-Goal: reduce under-enhancement by weighting image target more strongly.
+Mục tiêu: giảm under-enhancement bằng cách ưu tiên image target hơn.
 
-Changes:
+Thay đổi chính:
 
-- increased `ssim`
-- increased `exposure`
-- reduced `param` supervision pressure
+- tăng `ssim`
+- tăng `exposure`
+- giảm áp lực `param` supervision
 
-Result:
+Kết quả:
 
-- output became visibly brighter and more useful
-- no severe over-bright artifact observed in preview
-- this run became the selected old/canonical baseline
+- output sáng và hữu ích hơn
+- không thấy over-bright nặng trong preview
+- run này được chọn làm baseline canonical cũ
 
-### Brightness Test
+### Brightness test
 
-A later high-target experiment was trained to make output closer to `high` images. Quantitatively it was brighter, but the user preferred the older teacher-target visual result. High-bright experiments were removed and should not be treated as canonical.
+Đã thử train bản sáng hơn để bám `high` image. Số đo sáng hơn, nhưng visual người dùng chọn bản old teacher-target vì nhìn hợp hơn. Các experiment high-bright đã bị bỏ, không dùng làm canonical.
 
-## Firmware Findings
+## Nhận định firmware
 
-Important facts from `08-DCMI2LCD`:
+Từ `08-DCMI2LCD`:
 
-- DCMI DMA fills an RGB565 frame buffer.
-- DCMI callback should only mark frame readiness.
-- LCD write path is blocking and likely a major bottleneck.
-- Current stock path uses a single capture/display buffer, which is risky for processing.
-- The enhancement hook should be in the main loop before LCD blit.
+- DCMI DMA ghi vào RGB565 frame buffer.
+- DCMI callback chỉ nên set ready flag.
+- LCD write đang blocking, có thể là bottleneck chính.
+- Stock firmware dùng single buffer, không đủ chắc cho pipeline xử lý.
+- Hook xử lý nên nằm trong main loop trước LCD blit.
 
-Main firmware risks:
+Rủi ro chính:
 
 - DMA/cache coherency
-- tearing from single-buffer circular DMA
+- tearing do single-buffer circular DMA
 - LCD transfer cost
-- RGB565/luma preprocessing mismatch
-- runtime memory for any AI inference stack
+- preprocess RGB565/luma lệch với Python
+- RAM/runtime cho AI inference
 
-## Recommended Board Work
+## Việc nên làm trên board
 
-1. Flash and verify raw `camera -> LCD`.
-2. Add identity/bypass processing hook.
-3. Define buffer ownership and D-cache policy.
-4. Add no-AI baseline with gain/gamma LUT.
-5. Measure FPS and latency for raw, bypass, baseline.
-6. Integrate Student-G only after baseline is stable.
+1. Flash và xác nhận raw `camera -> LCD`.
+2. Thêm identity/bypass processing hook.
+3. Chốt buffer ownership và D-cache policy.
+4. Thêm baseline không AI bằng gain/gamma LUT.
+5. Đo FPS/latency cho raw, bypass, baseline.
+6. Chỉ tích hợp Student-G sau khi baseline ổn.
 
-## Current Status
+## Trạng thái hiện tại
 
-Ready for collaborator board testing:
+Repo đã sẵn sàng để bạn khác test board:
 
-- firmware base included
-- old canonical checkpoint included
-- preview outputs included
-- export artifacts included
-- datasets included through Git LFS
+- có firmware base
+- có checkpoint old canonical
+- có preview output
+- có export artifacts
+- có dataset qua Git LFS
 
-The next critical work is hardware validation, not more offline training.
+Việc quan trọng tiếp theo là xác nhận trên phần cứng thật, không phải train thêm offline.

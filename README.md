@@ -1,39 +1,42 @@
 # llie-stm32
 
-Low-light enhancement research workspace for `STM32H750VBT6`.
+Dự án tăng cường ảnh thiếu sáng cho `STM32H750VBT6`.
 
-Target pipeline:
+Pipeline mục tiêu:
 
 ```text
-camera -> lightweight enhancement -> LCD
+camera -> tăng cường ảnh nhẹ -> LCD
 ```
 
-The project explores a deployable path for microcontrollers: a tiny student model predicts global enhancement controls, while firmware applies fast gain/gamma style rendering.
+Ý tưởng chính: không đưa model image-to-image nặng lên MCU. Model `Student-G` chỉ dự đoán các tham số điều khiển toàn cục, còn firmware áp dụng gain/gamma nhanh trên ảnh.
 
-## What Is Included
+## Có gì trong repo
 
-- Training and export code in `workspace/`
-- One technical plan in `docs/PLAN.md`
-- One project report in `reports/REPORT.md`
-- Datasets in `datasets/` through Git LFS
-- STM32H750 firmware base in `firmware/08-DCMI2LCD/`
+- Code train/export: `workspace/`
+- Plan kỹ thuật gọn: `docs/PLAN.md`
+- Report gọn: `reports/REPORT.md`
+- Dataset qua Git LFS: `datasets/`
+- Firmware nền để test board: `firmware/08-DCMI2LCD/`
+- Output baseline đã chốt:
+  - `workspace/outputs/checkpoints_image_first/`
+  - `workspace/outputs/previews_image_first/`
+  - `workspace/outputs/export_image_first_full/`
 
-The repo includes the selected baseline outputs needed for review and board bring-up:
-
-- `workspace/outputs/checkpoints_image_first/`
-- `workspace/outputs/previews_image_first/`
-- `workspace/outputs/export_image_first_full/`
-
-Not tracked:
+Không track:
 
 - `.venv/`
-- optional cloned reference repos under `repos/`
+- `repos/`
+- `STATUS.md`
+- `TODO.md`
 
-## Quick Start
+`STATUS.md` và `TODO.md` chỉ để local.
+
+## Clone và chuẩn bị
 
 ```bash
 git clone git@github.com:NgThachThanh/llie-stm32.git
 cd llie-stm32
+git lfs pull
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -42,27 +45,21 @@ pip install torch torchvision numpy scipy pyyaml opencv-python-headless
 python -m compileall workspace/scripts workspace/src
 ```
 
-If dataset files are missing after clone:
-
-```bash
-git lfs pull
-```
-
-## Repository Layout
+## Cấu trúc
 
 ```text
-docs/        technical notes and firmware plan
-firmware/    STM32H750 firmware example prepared for board testing
-reports/     project reports
-papers/      reference paper
-datasets/    LOL / LOL-v2 datasets tracked with Git LFS
-repos/       optional local reference/vendor repos, ignored
-workspace/   training, evaluation, and export code
+docs/        plan kỹ thuật
+reports/     báo cáo dự án
+firmware/    firmware STM32H750 để test board
+datasets/    LOL / LOL-v2 qua Git LFS
+papers/      paper tham chiếu
+workspace/   code train, preview, export
+repos/       repo tham chiếu local, không track
 ```
 
-## Data Layout
+## Dataset
 
-Place paired low-light datasets under:
+Dataset chính:
 
 ```text
 datasets/lol/
@@ -72,30 +69,31 @@ datasets/lol/
   val/high/
 ```
 
-Teacher targets and pseudo-controls, when generated, live beside the dataset:
-
-```text
-datasets/lol/train/teacher_y/
-datasets/lol/train/pseudo_ctrl_v2/
-```
-
-Other included datasets:
+Dataset khác có kèm:
 
 ```text
 datasets/lol_v2_real/
 datasets/lol_v2_synthetic/
 ```
 
-## Current Baseline
+Teacher target và pseudo-control nằm ở:
+
+```text
+datasets/lol/train/teacher_y/
+datasets/lol/train/pseudo_ctrl_v2/
+```
+
+## Baseline hiện tại
 
 - Model: `Student-G`
 - Config: `workspace/configs/image_first.yaml`
 - Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
-- Export artifacts: `workspace/outputs/export_image_first_full/`
+- Export: `workspace/outputs/export_image_first_full/`
+- Preview: `workspace/outputs/previews_image_first/`
 
-## Train / Preview / Export
+## Train / preview / export
 
-Run from `workspace/`.
+Chạy từ `workspace/`.
 
 Train:
 
@@ -133,9 +131,11 @@ python scripts/export_tflite.py \
   --output-dir outputs/export_image_first_full
 ```
 
-## Next Engineering Work
+## Việc tiếp theo trên board
 
-1. Verify raw `camera -> LCD` on the target board.
-2. Add a firmware bypass/process hook.
-3. Build and measure a non-AI baseline.
-4. Integrate `Student-G` only after the board path is stable.
+1. Flash và xác nhận raw `camera -> LCD`.
+2. Thêm processing hook dạng bypass.
+3. Chốt buffer ownership và D-cache policy.
+4. Thêm baseline không AI: gain/gamma LUT.
+5. Đo FPS/latency.
+6. Chỉ tích hợp `Student-G` sau khi baseline ổn.

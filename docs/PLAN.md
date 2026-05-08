@@ -1,24 +1,24 @@
-# Project Plan
+# Kế Hoạch Dự Án
 
-## Goal
+## Mục tiêu
 
-Build a practical low-light enhancement path for `STM32H750VBT6`:
+Xây dựng pipeline tăng cường ảnh thiếu sáng chạy được trên `STM32H750VBT6`:
 
 ```text
-camera -> lightweight enhancement -> LCD
+camera -> xử lý nhẹ -> LCD
 ```
 
-The target is a stable board demo, not a SOTA image restoration benchmark.
+Mục tiêu là demo ổn định trên board thật, không phải benchmark SOTA.
 
-## Current Direction
+## Hướng đang chọn
 
-- Use `08-DCMI2LCD` as the firmware base.
-- Keep enhancement luma-centric.
-- Use a tiny `Student-G` model to predict global controls.
-- Apply enhancement in firmware with fast gain/gamma style rendering.
-- Keep non-AI baseline as fallback.
+- Dùng firmware `08-DCMI2LCD` làm nền.
+- Xử lý theo hướng luma-centric.
+- Dùng model nhỏ `Student-G` để dự đoán control toàn cục.
+- Firmware áp dụng gain/gamma nhanh lên ảnh.
+- Luôn giữ baseline không AI để fallback.
 
-## Current Baseline
+## Baseline hiện tại
 
 - Model: `student_global_only`
 - Config: `workspace/configs/image_first.yaml`
@@ -29,7 +29,7 @@ The target is a stable board demo, not a SOTA image restoration benchmark.
 
 ## Dataset
 
-Included local dataset layout:
+Cấu trúc dataset:
 
 ```text
 datasets/lol/
@@ -42,15 +42,15 @@ datasets/lol_v2_real/
 datasets/lol_v2_synthetic/
 ```
 
-Useful counts:
+Số lượng chính:
 
 - `lol`: 486 train pairs, 15 val pairs
 - `lol_v2_real`: 689 train pairs, 100 val pairs
 - `lol_v2_synthetic`: 900 train pairs, 100 val pairs
 
-## Training Flow
+## Luồng train
 
-Run from `workspace/`:
+Chạy từ `workspace/`:
 
 ```bash
 python scripts/train_float.py \
@@ -65,7 +65,7 @@ python scripts/train_float.py \
   --outdir outputs/checkpoints_image_first
 ```
 
-Preview:
+Tạo preview:
 
 ```bash
 python scripts/eval_preview.py \
@@ -86,41 +86,42 @@ python scripts/export_tflite.py \
   --output-dir outputs/export_image_first_full
 ```
 
-## Firmware Plan
+## Kế hoạch firmware
 
-First board work should be conservative:
+Khi test board, đi theo thứ tự:
 
-1. Confirm raw `camera -> LCD` works.
-2. Add a bypass processing hook before LCD blit.
-3. Fix buffer ownership and D-cache policy.
-4. Add no-AI baseline: gain, gamma LUT, black lift, EMA.
-5. Measure raw, bypass, baseline, and later AI modes separately.
-6. Only then integrate `Student-G`.
+1. Xác nhận raw `camera -> LCD` chạy.
+2. Thêm processing hook dạng bypass trước LCD blit.
+3. Chốt buffer ownership và D-cache policy.
+4. Thêm baseline không AI: gain, gamma LUT, black lift, EMA.
+5. Đo raw, bypass, baseline, rồi mới đến AI.
+6. Chỉ tích hợp `Student-G` khi baseline ổn.
 
-Known hook from inspected firmware:
+Hook chính:
 
 ```text
 firmware/08-DCMI2LCD/Src/main.c
 ```
 
-Processing belongs in the main loop before `ST7735_FillRGBRect(...)`.
-Do not put heavy work in DCMI callback or IRQ.
+Xử lý phải nằm trong main loop trước `ST7735_FillRGBRect(...)`.
+Không đặt xử lý nặng trong DCMI callback hoặc IRQ.
 
-## Board Test Checklist
+## Checklist test board
 
-- Build and flash current `firmware/08-DCMI2LCD`.
-- Verify camera sensor and LCD orientation.
-- Record raw FPS.
-- Add identity processing hook.
-- Verify raw vs bypass output is visually identical.
-- Add baseline enhancement and measure FPS again.
-- Compare baseline to saved previews.
-- Integrate AI only after baseline is stable.
+- Build và flash `firmware/08-DCMI2LCD`.
+- Xác nhận camera sensor và hướng LCD.
+- Ghi raw FPS.
+- Thêm identity processing hook.
+- So raw và bypass, output phải giống nhau.
+- Thêm baseline enhancement.
+- Đo FPS lại.
+- So với preview đã lưu.
+- Tích hợp AI sau cùng.
 
-## Risks
+## Rủi ro
 
-- Single-buffer circular DMA can tear while CPU/LCD reads.
-- Cacheable AXI SRAM plus DMA can corrupt/stale frame data.
-- Blocking LCD transfer may dominate frame time.
-- Python preprocessing can drift from MCU RGB565/luma path.
-- TFLite export parity is not the same as MCU runtime readiness.
+- Single-buffer circular DMA có thể tearing khi CPU/LCD đọc.
+- AXI SRAM cacheable + DMA có thể gây stale/corrupt frame.
+- LCD blocking transfer có thể là bottleneck chính.
+- Preprocess Python có thể lệch với RGB565/luma trên MCU.
+- TFLite export khớp PyTorch chưa đồng nghĩa MCU runtime sẵn sàng.
