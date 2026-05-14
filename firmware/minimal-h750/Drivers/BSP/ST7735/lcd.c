@@ -55,10 +55,10 @@ void LCD_Test(void)
 	#endif
 
 	ST7735_RegisterBusIO(&st7735_pObj,&st7735_pIO);
-	ST7735_LCD_Driver.Init(&st7735_pObj,ST7735_FORMAT_RBG565,&ST7735Ctx);
+	ST7735_Init(&st7735_pObj,ST7735_FORMAT_RBG565,&ST7735Ctx);
 	st7735_id = 0;
 	LCD_SetBrightness(100);
-	ST7735_LCD_Driver.FillRect(&st7735_pObj, 0, 0, ST7735Ctx.Width,ST7735Ctx.Height, BLACK);
+	ST7735_FillRect(&st7735_pObj, 0, 0, ST7735Ctx.Width,ST7735Ctx.Height, BLACK);
 }
 static uint32_t LCD_LightSet;
 static uint8_t IsLCD_SoftPWM = 0;

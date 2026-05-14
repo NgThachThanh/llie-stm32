@@ -244,7 +244,7 @@ int main(void)
 	Camera_Init_Device(&hi2c1, FRAMESIZE_QQVGA2);
 	#endif
 
-	ST7735_LCD_Driver.FillRect(&st7735_pObj, 0, 0, ST7735Ctx.Width, ST7735Ctx.Height, BLACK);
+	ST7735_FillRect(&st7735_pObj, 0, 0, ST7735Ctx.Width, ST7735Ctx.Height, BLACK);
 
   HAL_DCMI_Start_DMA(&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)&pic, FrameWidth * FrameHeight * 2 / 4);
 
@@ -368,5 +368,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   
 }
 #endif 
-
 
