@@ -39,93 +39,6 @@
 
 void SystemClock_Config(void);
 
-#define LLIE_BASELINE_GAIN_Q8  320U
-#define LLIE_BASELINE_LIFT_R5  1U
-#define LLIE_BASELINE_LIFT_G6  2U
-#define LLIE_BASELINE_LIFT_B5  1U
-
-#ifdef TFT96
-
-#define FrameWidth 160
-#define FrameHeight 120
-#elif TFT18
-
-#define FrameWidth 128
-#define FrameHeight 160
-#endif
-
-__ALIGNED(32) uint16_t pic[FrameWidth][FrameHeight];
-volatile uint32_t DCMI_FrameIsReady;
-uint32_t Camera_FPS=0;
-static uint8_t EnhanceEnabled = 0;
-
-static uint32_t LLIE_ClampU32(uint32_t value, uint32_t max_value)
-{
-  return value > max_value ? max_value : value;
-}
-
-static uint16_t LLIE_ApplyBaselinePixel(uint16_t pixel)
-{
-  uint32_t red = (pixel >> 11) & 0x1FU;
-  uint32_t green = (pixel >> 5) & 0x3FU;
-  uint32_t blue = pixel & 0x1FU;
-
-  red = ((red * LLIE_BASELINE_GAIN_Q8) >> 8) + LLIE_BASELINE_LIFT_R5;
-  green = ((green * LLIE_BASELINE_GAIN_Q8) >> 8) + LLIE_BASELINE_LIFT_G6;
-  blue = ((blue * LLIE_BASELINE_GAIN_Q8) >> 8) + LLIE_BASELINE_LIFT_B5;
-
-  red = LLIE_ClampU32(red, 0x1FU);
-  green = LLIE_ClampU32(green, 0x3FU);
-  blue = LLIE_ClampU32(blue, 0x1FU);
-
-  return (uint16_t)((red << 11) | (green << 5) | blue);
-}
-
-static void LLIE_InvalidateFrameBuffer(void)
-{
-  uint32_t addr = (uint32_t)&pic[0][0];
-  uint32_t aligned_addr = addr & ~31U;
-  uint32_t byte_count = FrameWidth * FrameHeight * sizeof(uint16_t);
-  uint32_t aligned_byte_count = (byte_count + (addr - aligned_addr) + 31U) & ~31U;
-
-  SCB_InvalidateDCache_by_Addr((void *)aligned_addr, (int32_t)aligned_byte_count);
-}
-
-static void LLIE_ProcessFrame(uint16_t *frame, uint32_t pixel_count)
-{
-  uint32_t index;
-
-  if (!EnhanceEnabled)
-  {
-    return;
-  }
-
-  for (index = 0; index < pixel_count; index++)
-  {
-    frame[index] = LLIE_ApplyBaselinePixel(frame[index]);
-  }
-}
-
-static void LLIE_PollButton(void)
-{
-  static GPIO_PinState last_state = GPIO_PIN_RESET;
-  static uint32_t last_toggle_tick = 0;
-  GPIO_PinState state = HAL_GPIO_ReadPin(KEY_GPIO_Port, KEY_Pin);
-  uint32_t now = HAL_GetTick();
-
-  if (state == GPIO_PIN_SET && last_state == GPIO_PIN_RESET && (now - last_toggle_tick) > 250U)
-  {
-    EnhanceEnabled = !EnhanceEnabled;
-    last_toggle_tick = now;
-  }
-
-  last_state = state;
-}
-
-
-
-
-
 static void MPU_Config(void)
 {
   MPU_Region_InitTypeDef MPU_InitStruct = {0};
@@ -257,14 +170,11 @@ int main(void)
     
 
     
-    LLIE_PollButton();
-
     if (DCMI_FrameIsReady)
     {
       DCMI_FrameIsReady = 0;
 
-      LLIE_InvalidateFrameBuffer();
-      LLIE_ProcessFrame(&pic[0][0], FrameWidth * FrameHeight);
+      SCB_InvalidateDCache_by_Addr((void *)((uint32_t)&pic[0][0] & ~31U), FrameWidth * FrameHeight * sizeof(uint16_t));
 
       #ifdef TFT96
 			ST7735_MinBlitRGB565(0, 0, (uint8_t *)&pic[20][0], ST7735_MIN_WIDTH, ST7735_MIN_HEIGHT);
@@ -332,16 +242,7 @@ void SystemClock_Config(void)
 
 void HAL_DCMI_FrameEventCallback(DCMI_HandleTypeDef *hdcmi)
 {
-	static uint32_t count = 0,tick = 0;
-	
-	if(HAL_GetTick() - tick >= 1000)
-	{
-		tick = HAL_GetTick();
-		Camera_FPS = count;
-		count = 0;
-	}
-	count ++;
-	
+  (void)hdcmi;
   DCMI_FrameIsReady = 1;
 }
 
