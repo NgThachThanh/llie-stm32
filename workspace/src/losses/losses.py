@@ -101,3 +101,46 @@ def build_image_loss(
         'reg': loss_reg,
         'param': loss_param,
     }
+
+
+def gradient_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    x_dx = x[:, :, :, 1:] - x[:, :, :, :-1]
+    y_dx = y[:, :, :, 1:] - y[:, :, :, :-1]
+    x_dy = x[:, :, 1:, :] - x[:, :, :-1, :]
+    y_dy = y[:, :, 1:, :] - y[:, :, :-1, :]
+    return F.l1_loss(x_dx, y_dx) + F.l1_loss(x_dy, y_dy)
+
+
+def build_rgb_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    teacher: Optional[torch.Tensor] = None,
+    weights: Optional[Dict[str, float]] = None,
+) -> Dict[str, torch.Tensor]:
+    """Minimal direct-image loss for RGB baseline and distilled RGB student."""
+    weights = weights or {
+        'l1': 1.0,
+        'ssim': 0.2,
+        'perceptual': 0.1,
+        'distill': 0.5,
+    }
+    loss_l1 = F.l1_loss(pred, target)
+    loss_ssim = simple_ssim_loss(pred, target)
+    loss_perceptual = gradient_loss(pred, target)
+    loss_distill = torch.tensor(0.0, device=pred.device)
+    if teacher is not None:
+        loss_distill = F.smooth_l1_loss(pred, teacher)
+
+    total = (
+        weights.get('l1', 0.0) * loss_l1
+        + weights.get('ssim', 0.0) * loss_ssim
+        + weights.get('perceptual', 0.0) * loss_perceptual
+        + weights.get('distill', 0.0) * loss_distill
+    )
+    return {
+        'total': total,
+        'l1': loss_l1,
+        'ssim': loss_ssim,
+        'perceptual': loss_perceptual,
+        'distill': loss_distill,
+    }

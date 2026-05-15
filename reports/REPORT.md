@@ -1,128 +1,93 @@
-# Báo Cáo Dự Án
+# B?o C?o D? ?n
 
-## Tên đề tài
+## T?n ?? t?i
 
-Pipeline tăng cường ảnh thiếu sáng near real-time trên `STM32H750VBT6`.
+T?ng c??ng ?nh thi?u s?ng tr?n `STM32H750VBT6` theo h??ng diffusion-distillation cho thi?t b? nh?ng.
 
-## Lý do chọn hướng này
+## B?i c?nh
 
-Ảnh camera trong môi trường thiếu sáng thường tối, nhiễu và khó quan sát. Các model low-light enhancement lớn chạy tốt trên PC/GPU nhưng không phù hợp MCU nhỏ. Vì vậy dự án chọn hướng thực dụng: thiết kế pipeline nhúng nhẹ, đo được trên board, có fallback không AI.
+C?c h? th?ng low-light enhancement tr?n PC c? th? ??t ch?t l??ng cao, nh?ng m? h?nh l?n kh? tri?n khai tr?c ti?p tr?n MCU. B?n tri?n khai ban ??u c?a d? ?n ?? ch?ng minh m?t ???ng ?i r?t th?c d?ng: camera ch?y ?n, LCD hi?n th? ???c, c? baseline AI nh? v? ?o ???c FPS tr?n board th?t. Tuy nhi?n, baseline ?? d?ng m? h?nh d? ?o?n v?i tham s? ?i?u khi?n to?n c?c r?i ?? firmware t? render l?i ?nh; c?ch n?y ph? h?p ?? bring-up, nh?ng ch?a ph?n ?nh tham v?ng nghi?n c?u d?i h?n c?a d? ?n.
 
-## Phần cứng mục tiêu
+## ??nh h??ng m?i
 
-- Board: WeAct MiniSTM32H7xx / `STM32H750VBT6`
-- Camera path: DCMI
-- Màn hình: ST7735 LCD
-- Firmware nền: `firmware/08-DCMI2LCD/`
-
-## Hướng hệ thống
-
-Pipeline mục tiêu:
+D? ?n chuy?n sang h??ng:
 
 ```text
-camera -> ước lượng luma/control -> render nhanh -> LCD
+diffusion teacher tr?n PC -> student RGB 1-step -> tri?n khai tr?n STM32H750
 ```
 
-Nguyên tắc:
+? t??ng c?t l?i l? d?ng diffusion l?m **teacher ch?t l??ng cao**, sau ?? ch?ng c?t xu?ng m?t student RGB ?? nh? ?? ch?y tr?n H750. H??ng n?y gi? ???c tinh th?n c?a diffusion, nh?ng v?n t?n tr?ng gi?i h?n th?c t? c?a edge device.
 
-- không dùng full RGB image-to-image CNN trên MCU
-- ưu tiên luma, độ phân giải nhỏ
-- model nhỏ chỉ xuất control values
-- firmware làm phần render nhanh
-- baseline không AI luôn tồn tại để fallback
+## Vai tr? c?a baseline hi?n t?i
 
-## Baseline AI hiện tại
+B?n ?ang ch?y ???c trong `firmware/gcc-h750-cam-lcd-min/` kh?ng b? lo?i b?. N? gi? ba vai tr? quan tr?ng:
 
-- Model family: `Student-G`
-- Model type: `student_global_only`
-- Input: luma `96x96`
-- Output: 3 control toàn cục
-- Config: `workspace/configs/image_first.yaml`
-- Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
-- Preview: `workspace/outputs/previews_image_first/`
-- Export: `workspace/outputs/export_image_first_full/`
+1. B?n demo ?n ??nh n?u h??ng diffusion ch?a ho?n thi?n k?p.
+2. M?c so s?nh ??nh l??ng cho m?i n?ng c?p ti?p theo.
+3. B?ng ch?ng r?ng camera, LCD, memory path v? quy tr?nh n?p board ?? ???c gi?i quy?t.
 
-Sanity export:
+Nh? v?y, ph?n nghi?n c?u m?i c? th? ti?n xa h?n m? kh?ng l?m m?t n?n t?ng ?? ch?ng minh ???c tr?n ph?n c?ng th?t.
 
-- TFLite input shape: `[1, 96, 96, 1]`
-- TFLite output shape: `[1, 3]`
-- max diff so với PyTorch: `1.9073486328125e-06`
-- mean diff so với PyTorch: `1.112619997911679e-06`
+## Paper tham chi?u
 
-## Mốc train
+- **Zero-DCE**: paper n?n t?ng v? low-light enhancement b?ng curve estimation.
+- **MIWAI 2025**: paper tham chi?u g?n nh?t cho tri?n khai low-light enhancement tr?n ESP32-S3-EYE.
 
-### Smoke run
+D? ?n kh?ng ch? nh?m ??n vi?c l?p l?i paper MIWAI 2025 tr?n chip m?nh h?n, m? mu?n ki?m tra xem H750 c? th? ??a m?t student ???c ch?ng c?t t? diffusion xu?ng edge t?t h?n t?i m?c n?o.
 
-Mục tiêu: xác nhận pipeline teacher target, pseudo-control, training và preview chạy end-to-end.
+## Ki?n tr?c nghi?n c?u
 
-Kết quả:
+### 1. Diffusion teacher
 
-- teacher generation chạy được
-- pseudo-control generation chạy được
-- Student-G train được
-- preview tạo được
-- output tốt hơn ảnh low-light gốc nhưng vẫn hơi tối
+Teacher ch?y offline tr?n PC ?? h?c ?nh x? low-light -> normal-light v?i ch?t l??ng cao. ??y l? ngu?n tri th?c ?? t?o target v? h??ng d?n student.
 
-Kết luận:
+### 2. RGB CNN baseline
 
-- smoke milestone pass
-- chưa phải quality milestone cuối
+M?t baseline RGB-to-RGB nh? s? ???c d?ng ??:
 
-### Image-first run
+- t?o m?c n?i b? minh b?ch h?n control-global hi?n t?i;
+- ph?n bi?t l?i ?ch c?a ???i sang RGB full-AI? v?i l?i ?ch th?t s? c?a ?distill t? diffusion?.
 
-Mục tiêu: giảm under-enhancement bằng cách ưu tiên image target hơn.
+### 3. RGB student 1-step
 
-Thay đổi chính:
+Student m?c ti?u c? ??u v?o v? ??u ra `96x96 RGB`, inference m?t b??c, ?? c? kh? n?ng ch?y tr?n H750. ??y l? model deploy ch?nh trong giai ?o?n ti?p theo.
 
-- tăng `ssim`
-- tăng `exposure`
-- giảm áp lực `param` supervision
+## Ph??ng ph?p ??nh gi?
 
-Kết quả:
+??nh gi? s? b?m c?c benchmark LOL / LOL-v2 v? ??t c?nh nhau:
 
-- output sáng và hữu ích hơn
-- không thấy over-bright nặng trong preview
-- run này được chọn làm baseline canonical cũ
+- ?nh low-light g?c;
+- stable baseline hi?n t?i;
+- RGB CNN baseline;
+- diffusion teacher offline;
+- student RGB 1-step;
+- s? li?u c?a paper MIWAI 2025 ? c?ng thi?t l?p so s?nh.
 
-### Brightness test
+C?c ch? s? c?n theo d?i g?m ch?t l??ng ?nh offline v? hi?u n?ng th?t tr?n board: PSNR/SSIM, latency, FPS, footprint b? nh? v? ?? ?n ??nh hi?n th?.
 
-Đã thử train bản sáng hơn để bám `high` image. Số đo sáng hơn, nhưng visual người dùng chọn bản old teacher-target vì nhìn hợp hơn. Các experiment high-bright đã bị bỏ, không dùng làm canonical.
+## Tr?ng th?i th?c thi
 
-## Nhận định firmware
+### ?? ho?n th?nh
 
-Từ `08-DCMI2LCD`:
+- Bring-up ph?n c?ng th?nh c?ng tr?n WeAct MiniSTM32H7xx d?ng `STM32H750VBT6`.
+- Camera OV5640, LCD ST7735 v? overlay FPS ?? ch?y ???c.
+- ?? c? stable baseline ho?t ??ng tr?n board th?t.
+- ?? t?ch ri?ng v?ng ph?t tri?n m?i ?? tr?nh ph? b?n ?ang ch?y ???c.
 
-- DCMI DMA ghi vào RGB565 frame buffer.
-- DCMI callback chỉ nên set ready flag.
-- LCD write đang blocking, có thể là bottleneck chính.
-- Stock firmware dùng single buffer, không đủ chắc cho pipeline xử lý.
-- Hook xử lý nên nằm trong main loop trước LCD blit.
+### ?ang chuy?n h??ng
 
-Rủi ro chính:
+- Pipeline train c? d?a tr?n luma/control kh?ng c?n l? ??ch nghi?n c?u ch?nh.
+- Ph?n ti?p theo l? d?ng teacher diffusion, RGB baseline v? student 1-step.
 
-- DMA/cache coherency
-- tearing do single-buffer circular DMA
-- LCD transfer cost
-- preprocess RGB565/luma lệch với Python
-- RAM/runtime cho AI inference
+## Gi? tr? k? v?ng
 
-## Việc nên làm trên board
+N?u th?nh c?ng, d? ?n s? cho th?y m?t con ???ng th?c t? h?n gi?a hai th?i c?c:
 
-1. Flash và xác nhận raw `camera -> LCD`.
-2. Thêm identity/bypass processing hook.
-3. Chốt buffer ownership và D-cache policy.
-4. Thêm baseline không AI bằng gain/gamma LUT.
-5. Đo FPS/latency cho raw, bypass, baseline.
-6. Chỉ tích hợp Student-G sau khi baseline ổn.
+- kh?ng ch? l? heuristic ho?c control-global r?t nh?;
+- c?ng kh?ng ??i ch?y nguy?n diffusion nhi?u b??c tr?n MCU.
 
-## Trạng thái hiện tại
+Thay v?o ??, ta d?ng m? h?nh l?n ?? d?y, r?i ??a ph?n tri th?c ?? ch?ng c?t xu?ng ph?n c?ng nh?ng ?? m?nh ?? ph?c v? ?ng d?ng th?t.
 
-Repo đã sẵn sàng để bạn khác test board:
+## K?t lu?n hi?n t?i
 
-- có firmware base
-- có checkpoint old canonical
-- có preview output
-- có export artifacts
-- có dataset qua Git LFS
-
-Việc quan trọng tiếp theo là xác nhận trên phần cứng thật, không phải train thêm offline.
+D? ?n ?? v??t qua giai ?o?n ch?ng minh ph?n c?ng. C?u h?i nghi?n c?u ti?p theo kh?ng c?n l? ?board c? ch?y ???c kh?ng?, m? l? ?ta c? th? n?n bao nhi?u ch?t l??ng t? diffusion xu?ng m?t student ?? nh? ?? H750 ch?y th?t t?t?. ?? l? h??ng n?ng c?p c? ? ngh?a h?n so v?i ch? l?p l?i pipeline ESP32 tr?n m?t vi ?i?u khi?n m?nh h?n.

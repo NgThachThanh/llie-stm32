@@ -105,3 +105,62 @@ class PairedImageDataset(Dataset):
                     sample['gain_map_tgt'] = torch.from_numpy(gain_map[None, ...])
 
         return sample
+
+
+class RGBPairedImageDataset(Dataset):
+    """Paired RGB low/high-light dataset for direct image-to-image training."""
+
+    def __init__(
+        self,
+        low_dir: str,
+        high_dir: str,
+        teacher_dir: Optional[str] = None,
+        image_size: int = 96,
+    ):
+        self.low_dir = Path(low_dir)
+        self.high_dir = Path(high_dir)
+        self.teacher_dir = Path(teacher_dir) if teacher_dir else None
+        self.image_size = image_size
+
+        files = []
+        for ext in ('*.png', '*.jpg', '*.jpeg', '*.bmp'):
+            files.extend(sorted(self.low_dir.glob(ext)))
+        self.low_files = files
+        if not self.low_files:
+            raise RuntimeError(f'No images found in {self.low_dir}')
+
+    def __len__(self):
+        return len(self.low_files)
+
+    def _match_high_path(self, low_path: Path) -> Path:
+        high_path = self.high_dir / low_path.name
+        if not high_path.exists():
+            raise FileNotFoundError(f'Cannot find matching high image for {low_path.name} in {self.high_dir}')
+        return high_path
+
+    @staticmethod
+    def _to_chw01(img_rgb: np.ndarray) -> torch.Tensor:
+        arr = img_rgb.astype(np.float32) / 255.0
+        return torch.from_numpy(np.transpose(arr, (2, 0, 1)).copy())
+
+    def __getitem__(self, idx):
+        low_path = self.low_files[idx]
+        high_path = self._match_high_path(low_path)
+        low_rgb = resize_hw(read_rgb(str(low_path)), self.image_size, self.image_size)
+        high_rgb = resize_hw(read_rgb(str(high_path)), self.image_size, self.image_size)
+
+        sample = {
+            'name': low_path.stem,
+            'rgb_low': self._to_chw01(low_rgb),
+            'rgb_high': self._to_chw01(high_rgb),
+        }
+
+        if self.teacher_dir:
+            for suffix in ('.png', '.jpg', '.jpeg', '.bmp'):
+                teacher_path = self.teacher_dir / f'{low_path.stem}{suffix}'
+                if teacher_path.exists():
+                    teacher_rgb = resize_hw(read_rgb(str(teacher_path)), self.image_size, self.image_size)
+                    sample['rgb_teacher'] = self._to_chw01(teacher_rgb)
+                    break
+
+        return sample

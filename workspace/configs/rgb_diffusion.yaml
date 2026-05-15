@@ -8,9 +8,8 @@ paths:
   outputs_root: outputs
 
 model:
-  type: rgb_cnn_baseline
-  base_channels: 16
-  depth: 4
+  type: one_step_rgb_student
+  base_channels: 24
 
 teacher:
   type: diffusion_enhancement
@@ -29,4 +28,4 @@ loss:
   l1: 1.0
   ssim: 0.2
   perceptual: 0.1
-  distill: 0.0
+  distill: 0.5

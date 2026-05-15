@@ -1,127 +1,92 @@
-# Kế Hoạch Dự Án
+# K? Ho?ch D? ?n
 
-## Mục tiêu
+## M?c ti?u
 
-Xây dựng pipeline tăng cường ảnh thiếu sáng chạy được trên `STM32H750VBT6`:
-
-```text
-camera -> xử lý nhẹ -> LCD
-```
-
-Mục tiêu là demo ổn định trên board thật, không phải benchmark SOTA.
-
-## Hướng đang chọn
-
-- Dùng firmware `08-DCMI2LCD` làm nền.
-- Xử lý theo hướng luma-centric.
-- Dùng model nhỏ `Student-G` để dự đoán control toàn cục.
-- Firmware áp dụng gain/gamma nhanh lên ảnh.
-- Luôn giữ baseline không AI để fallback.
-
-## Baseline hiện tại
-
-- Model: `student_global_only`
-- Config: `workspace/configs/image_first.yaml`
-- Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
-- Preview: `workspace/outputs/previews_image_first/`
-- Export: `workspace/outputs/export_image_first_full/`
-- Firmware base: `firmware/08-DCMI2LCD/`
-
-## Dataset
-
-Cấu trúc dataset:
+Chuy?n d? ?n t? h??ng `AI d? ?o?n control -> firmware t? render` sang h??ng:
 
 ```text
-datasets/lol/
-  train/low/
-  train/high/
-  val/low/
-  val/high/
-
-datasets/lol_v2_real/
-datasets/lol_v2_synthetic/
+diffusion teacher tr?n PC -> student RGB 1-step -> STM32H750
 ```
 
-Số lượng chính:
+??ch g?n l? c? m?t student RGB ch?y ???c th?t tr?n board. ??ch xa l? ch?ng minh H750 c? th? ??a m?t m? h?nh ???c ch?ng c?t t? diffusion xu?ng edge t?t h?n tuy?n ESP32 trong paper MIWAI 2025.
 
-- `lol`: 486 train pairs, 15 val pairs
-- `lol_v2_real`: 689 train pairs, 100 val pairs
-- `lol_v2_synthetic`: 900 train pairs, 100 val pairs
+## Nguy?n t?c th?c hi?n
 
-## Luồng train
+- Gi? `firmware/gcc-h750-cam-lcd-min/` l?m baseline ?n ??nh v? ph??ng ?n demo d? ph?ng.
+- D?ng `firmware/gcc-h750-cam-lcd-next/` cho to?n b? th? nghi?m m?i.
+- Kh?ng train th?m ch? ?? ??p tr?n PC; m?i m?c offline ph?i ph?c v? m?c ti?u cu?i l? student ch?y ???c tr?n H750.
+- Benchmark ??nh l??ng b?ng LOL / LOL-v2, kh?ng ch? ??nh gi? b?ng m?t.
 
-Chạy từ `workspace/`:
-
-```bash
-python scripts/train_float.py \
-  --config configs/image_first.yaml \
-  --low-dir ../datasets/lol/train/low \
-  --high-dir ../datasets/lol/train/high \
-  --teacher-dir ../datasets/lol/train/teacher_y \
-  --param-dir ../datasets/lol/train/pseudo_ctrl_v2 \
-  --val-low-dir ../datasets/lol/val/low \
-  --val-high-dir ../datasets/lol/val/high \
-  --val-teacher-dir ../datasets/lol/val/teacher_y \
-  --outdir outputs/checkpoints_image_first
-```
-
-Tạo preview:
-
-```bash
-python scripts/eval_preview.py \
-  --config configs/image_first.yaml \
-  --checkpoint outputs/checkpoints_image_first/best.pt \
-  --low-dir ../datasets/lol/val/low \
-  --high-dir ../datasets/lol/val/high \
-  --teacher-dir ../datasets/lol/val/teacher_y \
-  --output-dir outputs/previews_image_first
-```
-
-Export:
-
-```bash
-python scripts/export_tflite.py \
-  --config configs/image_first.yaml \
-  --checkpoint outputs/checkpoints_image_first/best.pt \
-  --output-dir outputs/export_image_first_full
-```
-
-## Kế hoạch firmware
-
-Khi test board, đi theo thứ tự:
-
-1. Xác nhận raw `camera -> LCD` chạy.
-2. Thêm processing hook dạng bypass trước LCD blit.
-3. Chốt buffer ownership và D-cache policy.
-4. Thêm baseline không AI: gain, gamma LUT, black lift, EMA.
-5. Đo raw, bypass, baseline, rồi mới đến AI.
-6. Chỉ tích hợp `Student-G` khi baseline ổn.
-
-Hook chính:
+## Ki?n tr?c m?c ti?u
 
 ```text
-firmware/08-DCMI2LCD/Src/main.c
+low-light RGB -> diffusion teacher (offline) -> target t?t h?n
+                                      |
+                                      v
+                          distill sang RGB student 1-step
+                                      |
+                                      v
+                         camera -> student -> LCD tr?n H750
 ```
 
-Xử lý phải nằm trong main loop trước `ST7735_FillRGBRect(...)`.
-Không đặt xử lý nặng trong DCMI callback hoặc IRQ.
+### Tuy?n 1: diffusion teacher
 
-## Checklist test board
+- Teacher l? m? h?nh enhancement chuy?n bi?t ch?y offline tr?n PC.
+- Nhi?m v? c?a teacher l? t?o target ch?t l??ng cao h?n cho b?i to?n low-light enhancement.
+- Teacher kh?ng ph?i m? h?nh deploy l?n MCU.
 
-- Build và flash `firmware/08-DCMI2LCD`.
-- Xác nhận camera sensor và hướng LCD.
-- Ghi raw FPS.
-- Thêm identity processing hook.
-- So raw và bypass, output phải giống nhau.
-- Thêm baseline enhancement.
-- Đo FPS lại.
-- So với preview đã lưu.
-- Tích hợp AI sau cùng.
+### Tuy?n 2: RGB baseline v? student
 
-## Rủi ro
+- D?ng m?t RGB CNN baseline ?? c? m?c so s?nh n?i b? minh b?ch.
+- Student deploy m?c ti?u: `96x96 RGB -> 96x96 RGB`, 1-step, ?? nh? ?? c? c?a ch?y real-time tr?n H750.
+- Renderer luma/control c? kh?ng c?n l? ki?n tr?c ??ch, nh?ng baseline hi?n t?i v?n ???c gi? ?? so s?nh.
 
-- Single-buffer circular DMA có thể tearing khi CPU/LCD đọc.
-- AXI SRAM cacheable + DMA có thể gây stale/corrupt frame.
-- LCD blocking transfer có thể là bottleneck chính.
-- Preprocess Python có thể lệch với RGB565/luma trên MCU.
-- TFLite export khớp PyTorch chưa đồng nghĩa MCU runtime sẵn sàng.
+## Tr?ng th?i hi?n t?i
+
+### ?? c?
+
+- B?n firmware ch?y ???c tr?n board th?t trong `firmware/gcc-h750-cam-lcd-min/`.
+- Pipeline camera, LCD, FPS overlay v? baseline AI nh? ?? ???c x?c nh?n ho?t ??ng.
+- Repo ?? c? dataset LOL / LOL-v2 v? n?n t?ng train tr??c ??.
+
+### C?n l?m ti?p
+
+1. D?ng teacher diffusion enhancement ch?y end-to-end.
+2. D?ng RGB CNN baseline.
+3. Distill teacher sang student RGB 1-step.
+4. So s?nh student v?i paper MIWAI 2025 ? c?ng ?? ph?n gi?i `96x96`.
+5. T?ch h?p student v?o `gcc-h750-cam-lcd-next` v? ?o FPS/latency th?t.
+
+## Ti?u ch? th?nh c?ng
+
+- T?i li?u, report v? README k? c?ng m?t c?u chuy?n k? thu?t.
+- Teacher diffusion t?o ???c output ??nh l??ng t?t tr?n t?p validation.
+- Student 1-step v??t ???c baseline n?i b? v? ???c so c?ng b?ng v?i MIWAI 2025.
+- B?n stable baseline kh?ng b? ?nh h??ng trong su?t qu? tr?nh nghi?n c?u.
+- Khi ??a xu?ng board, student RGB hi?n th? ??ng m?u, kh?ng treo, c? s? ?o latency/FPS r? r?ng.
+
+## Chi?n l??c so s?nh
+
+C?c m?c c?n ???c ??t c?nh nhau:
+
+1. Raw camera / low-light input.
+2. Stable baseline hi?n t?i.
+3. RGB CNN baseline.
+4. Diffusion teacher offline.
+5. Student RGB 1-step sau distillation.
+6. M?c paper MIWAI 2025 tr?n c?ng benchmark.
+
+M?c ti?u kh?ng ch? l? ??nh ??p h?n?, m? l? ch? ra ch?nh x?c H750 cho ph?p ti?n xa h?n ESP32 ? ??u: ch?t l??ng, t?c ??, ho?c c? hai.
+
+## R?i ro ch?nh
+
+- Teacher ??p nh?ng qu? kh? distill xu?ng model nh?.
+- Student RGB ?? ??p offline nh?ng qu? ch?m ho?c qu? n?ng tr?n MCU.
+- Ch?nh l?ch gi?a preprocess offline v? camera RGB565 th?c t? l?m gi?m ch?t l??ng khi deploy.
+- N?u ph?ng t?i g?n nh? kh?ng c?n t?n hi?u c?m bi?n, AI kh?ng th? b? cho gi?i h?n photon ??u v?o.
+
+## C?ch chia vi?c
+
+- Nh?nh docs/report/paper: gi? narrative nh?t qu?n, t?n paper ??ng, t?i li?u d? b?n giao.
+- Nh?nh train: thay pipeline luma/control b?ng RGB/diffusion, d?ng benchmark v? teacher/student.
+- Nh?nh firmware next: ch? t?ch h?p model m?i sau khi offline ?? ?? thuy?t ph?c.

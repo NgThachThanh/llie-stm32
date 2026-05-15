@@ -1,141 +1,51 @@
 # llie-stm32
 
-Dự án tăng cường ảnh thiếu sáng cho `STM32H750VBT6`.
-
-Pipeline mục tiêu:
+D? ?n t?ng c??ng ?nh thi?u s?ng cho `STM32H750VBT6`, hi?n ?i theo hai tuy?n song song:
 
 ```text
-camera -> tăng cường ảnh nhẹ -> LCD
+stable baseline: camera -> AI nh?/control -> LCD
+diffusion track: diffusion teacher tr?n PC -> RGB student 1-step -> STM32H750
 ```
 
-Ý tưởng chính: không đưa model image-to-image nặng lên MCU. Model `Student-G` chỉ dự đoán các tham số điều khiển toàn cục, còn firmware áp dụng gain/gamma nhanh trên ảnh.
+M?c ti?u nghi?n c?u m?i l? d?ng H750 nh? b? tri?n khai cho m?t **student RGB 1-step ???c ch?ng c?t t? diffusion**, thay v? ch? port l?i m? h?nh nh? c?a ESP32.
 
-## Có gì trong repo
+## Hai tuy?n trong repo
 
-- Code train/export: `workspace/`
-- Plan kỹ thuật gọn: `docs/PLAN.md`
-- Report gọn: `reports/REPORT.md`
-- Dataset qua Git LFS: `datasets/`
-- Firmware nền để test board: `firmware/08-DCMI2LCD/`
-- Output baseline đã chốt:
-  - `workspace/outputs/checkpoints_image_first/`
-  - `workspace/outputs/previews_image_first/`
-  - `workspace/outputs/export_image_first_full/`
+- `firmware/gcc-h750-cam-lcd-min/`: b?n stable ?? ch?y ???c tr?n board th?t, d?ng ?? demo, ?o ??c v? l?m baseline so s?nh.
+- `firmware/gcc-h750-cam-lcd-next/`: v?ng ph?t tri?n cho h??ng RGB/diffusion m?i; kh?ng s?a ch?ng l?n b?n stable.
+- `workspace/`: khu v?c train/eval/export cho pipeline m?i.
+- `docs/PLAN.md`: k? ho?ch k? thu?t hi?n t?i.
+- `reports/REPORT.md`: narrative nghi?n c?u v? tr?ng th?i th?c thi.
+- `papers/`: paper tham chi?u ?? ???c ??t t?n l?i cho ??ng n?i dung.
 
-Không track:
+## H??ng nghi?n c?u hi?n t?i
 
-- `.venv/`
-- `repos/`
-- `STATUS.md`
-- `TODO.md`
+L? tr?nh ?u ti?n:
 
-`STATUS.md` và `TODO.md` chỉ để local.
+1. D?ng teacher diffusion enhancement chuy?n bi?t tr?n PC.
+2. D?ng RGB CNN baseline ?? c? m?c n?i b? r? r?ng.
+3. Distill teacher xu?ng student RGB 1-step, ??u v?o/??u ra `96x96 RGB`.
+4. Ch? khi student ??t ch?t l??ng ?? t?t m?i ??a xu?ng H750 trong folder `...-next`.
 
-## Clone và chuẩn bị
+Stable baseline hi?n t?i **kh?ng b? b?**. N? l? b?n ch?y ???c ?? b?o c?o, demo v? so s?nh v?i m?i b??c n?ng c?p ti?p theo.
 
-```bash
-git clone git@github.com:NgThachThanh/llie-stm32.git
-cd llie-stm32
-git lfs pull
+## Paper tham chi?u
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install torch torchvision numpy scipy pyyaml opencv-python-headless
-
-python -m compileall workspace/scripts workspace/src
-```
-
-## Cấu trúc
-
-```text
-docs/        plan kỹ thuật
-reports/     báo cáo dự án
-firmware/    firmware STM32H750 để test board
-datasets/    LOL / LOL-v2 qua Git LFS
-papers/      paper tham chiếu
-workspace/   code train, preview, export
-repos/       repo tham chiếu local, không track
-```
+- `papers/Zero-DCE_Zero-Reference_Deep_Curve_Estimation_for_Low-Light_Image_Enhancement.pdf`
+- `papers/MIWAI2025_Towards_a_Real_time_and_on_ESP32_S3_EYE.pdf`
 
 ## Dataset
 
-Dataset chính:
-
 ```text
 datasets/lol/
-  train/low/
-  train/high/
-  val/low/
-  val/high/
-```
-
-Dataset khác có kèm:
-
-```text
 datasets/lol_v2_real/
 datasets/lol_v2_synthetic/
 ```
 
-Teacher target và pseudo-control nằm ở:
+C?c benchmark ch?nh v?n b?m LOL / LOL-v2 ?? so c?ng m?t b?ng v?i paper MIWAI 2025.
 
-```text
-datasets/lol/train/teacher_y/
-datasets/lol/train/pseudo_ctrl_v2/
-```
+## Ghi ch? cho c?ng t?c nh?m
 
-## Baseline hiện tại
-
-- Model: `Student-G`
-- Config: `workspace/configs/image_first.yaml`
-- Checkpoint: `workspace/outputs/checkpoints_image_first/best.pt`
-- Export: `workspace/outputs/export_image_first_full/`
-- Preview: `workspace/outputs/previews_image_first/`
-
-## Train / preview / export
-
-Chạy từ `workspace/`.
-
-Train:
-
-```bash
-python scripts/train_float.py \
-  --config configs/image_first.yaml \
-  --low-dir ../datasets/lol/train/low \
-  --high-dir ../datasets/lol/train/high \
-  --teacher-dir ../datasets/lol/train/teacher_y \
-  --param-dir ../datasets/lol/train/pseudo_ctrl_v2 \
-  --val-low-dir ../datasets/lol/val/low \
-  --val-high-dir ../datasets/lol/val/high \
-  --val-teacher-dir ../datasets/lol/val/teacher_y \
-  --outdir outputs/checkpoints_image_first
-```
-
-Preview:
-
-```bash
-python scripts/eval_preview.py \
-  --config configs/image_first.yaml \
-  --checkpoint outputs/checkpoints_image_first/best.pt \
-  --low-dir ../datasets/lol/val/low \
-  --high-dir ../datasets/lol/val/high \
-  --teacher-dir ../datasets/lol/val/teacher_y \
-  --output-dir outputs/previews_image_first
-```
-
-Export:
-
-```bash
-python scripts/export_tflite.py \
-  --config configs/image_first.yaml \
-  --checkpoint outputs/checkpoints_image_first/best.pt \
-  --output-dir outputs/export_image_first_full
-```
-
-## Việc tiếp theo trên board
-
-1. Flash và xác nhận raw `camera -> LCD`.
-2. Thêm processing hook dạng bypass.
-3. Chốt buffer ownership và D-cache policy.
-4. Thêm baseline không AI: gain/gamma LUT.
-5. Đo FPS/latency.
-6. Chỉ tích hợp `Student-G` sau khi baseline ổn.
+- N?u c?n m?t b?n lu?n ch?y ???c tr?n board, d?ng `firmware/gcc-h750-cam-lcd-min/`.
+- N?u l?m th? nghi?m m?i, l?m trong `firmware/gcc-h750-cam-lcd-next/` ho?c `workspace/`.
+- Ch? ??a thay ??i ng??c v? baseline khi ?? test board th?t v? c? l? do r?.
